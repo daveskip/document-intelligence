@@ -49,6 +49,8 @@ builder.AddDockerfile("functions", "../..", "src/DocumentIntelligence.Functions/
     .WithEnvironment("DOTNET_ENVIRONMENT", "Development")
     .WithEnvironment("AZURE_FUNCTIONS_ENVIRONMENT", "Development")
     .WithEnvironment("FUNCTIONS_WORKER_RUNTIME", "dotnet-isolated")
+    .WithEnvironment("AzureFunctionsJobHost__Logging__LogLevel__Default", "Information")
+    .WithEnvironment("AzureFunctionsJobHost__Logging__LogLevel__Host", "Warning")
     .WithEnvironment("AzureWebJobsStorage", blobs.Resource.ConnectionStringExpression)
     .WithEnvironment("servicebus", serviceBus.Resource.ConnectionStringExpression)
     .WithReference(db)

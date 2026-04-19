@@ -4,5 +4,10 @@
     "serviceBus": {
       "maxAutoRenewDuration": "00:10:00"
     }
+  },
+  "logging": {
+    "logLevel": {
+      "default": "Information"
+    }
   }
 }

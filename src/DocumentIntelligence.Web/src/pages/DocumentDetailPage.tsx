@@ -58,13 +58,14 @@ function ExtractedFields({ json }: { json: string }) {
               <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">
                 {key.replace(/([A-Z])/g, ' $1').trim()}
               </p>
-              <p className="text-sm text-gray-900">
-                {value === null || value === undefined
-                  ? <span className="text-gray-400 italic">—</span>
-                  : typeof value === 'boolean'
-                    ? (value ? 'Yes' : 'No')
-                    : String(value)}
-              </p>
+              {value === null || value === undefined
+                ? <p className="text-sm text-gray-400 italic">—</p>
+                : typeof value === 'boolean'
+                  ? <p className="text-sm text-gray-900">{value ? 'Yes' : 'No'}</p>
+                  : typeof value === 'object'
+                    ? <pre className="text-xs text-gray-700 bg-gray-50 rounded p-2 overflow-auto whitespace-pre-wrap">{JSON.stringify(value, null, 2)}</pre>
+                    : <p className="text-sm text-gray-900">{String(value)}</p>
+              }
             </div>
           ))}
         </div>
