@@ -26,7 +26,7 @@ public class DocumentProcessingFunction(
     OllamaApiClient ollamaClient,
     ILogger<DocumentProcessingFunction> logger)
 {
-    private const string ModelName = "gemma4:e2b";
+    private const string ModelName = "gemma4:e4b";
 
     [Function(nameof(DocumentProcessingFunction))]
     public async Task RunAsync(

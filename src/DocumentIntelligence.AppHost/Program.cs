@@ -30,7 +30,7 @@ serviceBus.AddServiceBusQueue("document-processing", "document-processing");
 var ollama = builder.AddOllama("ollama", port: 11434)
     .WithImageTag("latest")
     .WithDataVolume("docint-ollama-data")
-    .AddModel("gemma4:e2b");
+    .AddModel("gemma4:e4b");
 
 // ── API Service ────────────────────────────────────────────────────────────
 var apiService = builder.AddProject<Projects.DocumentIntelligence_ApiService>("apiservice")
