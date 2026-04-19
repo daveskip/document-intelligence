@@ -1,0 +1,24 @@
+{
+  "UserConfig": {
+    "Namespaces": [
+      {
+        "Name": "document-intelligence",
+        "Queues": [
+          {
+            "Name": "document-processing",
+            "Properties": {
+              "DeadLetteringOnMessageExpiration": true,
+              "DefaultMessageTimeToLive": "PT1H",
+              "LockDuration": "PT10M",
+              "MaxDeliveryCount": 3
+            }
+          }
+        ],
+        "Topics": []
+      }
+    ],
+    "Logging": {
+      "Type": "File"
+    }
+  }
+}

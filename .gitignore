@@ -1,0 +1,20 @@
+## .NET artifacts
+bin/
+obj/
+*.user
+*.suo
+.vs/
+
+## Node
+node_modules/
+dist/
+
+## Secrets
+**/secrets.json
+**/.env.local
+
+## Docker volumes (data)
+**/.docker/
+
+## Aspire
+.aspire/

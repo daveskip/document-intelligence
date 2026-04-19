@@ -1,0 +1,12 @@
+{
+  "profiles": {
+    "DocumentIntelligence.ApiService": {
+      "commandName": "Project",
+      "launchBrowser": true,
+      "environmentVariables": {
+        "ASPNETCORE_ENVIRONMENT": "Development"
+      },
+      "applicationUrl": "https://localhost:49866;http://localhost:49867"
+    }
+  }
+}

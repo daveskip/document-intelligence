@@ -1,0 +1,11 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/DocumentIntelligence.ApiService/DocumentIntelligence.ApiService.csproj" />
+    <Project Path="src/DocumentIntelligence.AppHost/DocumentIntelligence.AppHost.csproj" />
+    <Project Path="src/DocumentIntelligence.Contracts/DocumentIntelligence.Contracts.csproj" />
+    <Project Path="src/DocumentIntelligence.Domain/DocumentIntelligence.Domain.csproj" />
+    <Project Path="src/DocumentIntelligence.Functions/DocumentIntelligence.Functions.csproj" />
+    <Project Path="src/DocumentIntelligence.Infrastructure/DocumentIntelligence.Infrastructure.csproj" />
+    <Project Path="src/DocumentIntelligence.ServiceDefaults/DocumentIntelligence.ServiceDefaults.csproj" />
+  </Folder>
+</Solution>

@@ -1,0 +1,8 @@
+{
+  "version": "2.0",
+  "extensions": {
+    "serviceBus": {
+      "maxAutoRenewDuration": "00:10:00"
+    }
+  }
+}

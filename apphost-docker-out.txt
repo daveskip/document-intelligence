@@ -1,0 +1,34 @@
+Using launch settings from C:\repos\document-intelligence\DocumentIntelligence\src\DocumentIntelligence.AppHost\Properties\launchSettings.json...
+Building...
+info: Aspire.Hosting.DistributedApplication[0]
+      Aspire version: 13.2.2+25961cf7043e413abaf8ad84348988f2904b90d5
+info: Aspire.Hosting.DistributedApplication[0]
+      Distributed application starting.
+info: Aspire.Hosting.DistributedApplication[0]
+      Application host directory is: C:\repos\document-intelligence\DocumentIntelligence\src\DocumentIntelligence.AppHost
+info: Microsoft.AspNetCore.DataProtection.KeyManagement.XmlKeyManager[63]
+      User profile is available. Using 'C:\Users\DAVES\AppData\Local\ASP.NET\DataProtection-Keys' as key repository and Windows DPAPI to encrypt keys at rest.
+info: Aspire.Hosting.Dcp.DcpHost[0]
+      Starting DCP with arguments: start-apiserver --monitor 27412 --detach --kubeconfig "C:\Users\DAVES\AppData\Local\Temp\aspire-dcpeo2gjonl.ezg\kubeconfig"
+info: Aspire.Hosting.DistributedApplication[0]
+      Now listening on: https://localhost:18888
+info: Aspire.Hosting.DistributedApplication[0]
+      Login to the dashboard at https://localhost:18888/login?t=88c70c1f80ff7debbdf231cf1608803a
+info: Microsoft.AspNetCore.Hosting.Diagnostics[1]
+      Request starting HTTP/2 POST http://127.0.0.1:51619/aspire.v1.DashboardService/GetApplicationInformation - application/grpc -
+info: Microsoft.AspNetCore.Routing.EndpointMiddleware[0]
+      Executing endpoint 'gRPC - /aspire.v1.DashboardService/GetApplicationInformation'
+info: Microsoft.AspNetCore.Routing.EndpointMiddleware[1]
+      Executed endpoint 'gRPC - /aspire.v1.DashboardService/GetApplicationInformation'
+info: Microsoft.AspNetCore.Hosting.Diagnostics[2]
+      Request finished HTTP/2 POST http://127.0.0.1:51619/aspire.v1.DashboardService/GetApplicationInformation - 200 - application/grpc 40.9874ms
+info: Microsoft.AspNetCore.Hosting.Diagnostics[1]
+      Request starting HTTP/2 POST http://127.0.0.1:51619/aspire.v1.DashboardService/WatchInteractions - application/grpc -
+info: Microsoft.AspNetCore.Hosting.Diagnostics[1]
+      Request starting HTTP/2 POST http://127.0.0.1:51619/aspire.v1.DashboardService/WatchResources - application/grpc -
+info: Microsoft.AspNetCore.Routing.EndpointMiddleware[0]
+      Executing endpoint 'gRPC - /aspire.v1.DashboardService/WatchInteractions'
+info: Microsoft.AspNetCore.Routing.EndpointMiddleware[0]
+      Executing endpoint 'gRPC - /aspire.v1.DashboardService/WatchResources'
+info: Aspire.Hosting.DistributedApplication[0]
+      Distributed application started. Press Ctrl+C to shut down.

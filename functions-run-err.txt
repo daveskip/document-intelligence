@@ -1,0 +1,1 @@
+Unhandled exception: An error occurred trying to start process 'cmd' with working directory 'bin\Debug\net10.0\'. The directory name is invalid.
