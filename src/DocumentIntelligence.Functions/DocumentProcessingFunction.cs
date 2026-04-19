@@ -20,8 +20,8 @@ public class DocumentProcessingFunction(
     AppDbContext db,
     BlobServiceClient blobServiceClient,
     IHttpClientFactory httpClientFactory,
-    OllamaApiClient ollamaApiClient,
     IConfiguration configuration,
+    OllamaApiClient ollamaClient,
     ILogger<DocumentProcessingFunction> logger)
 {
     private const string ModelName = "gemma4";
@@ -138,7 +138,7 @@ public class DocumentProcessingFunction(
     private async Task<string> ExtractFieldsWithOllamaAsync(
         string? textContent, string[]? imageBase64s, string fileName, CancellationToken ct)
     {
-        var ollama = ollamaApiClient;
+        var ollama = ollamaClient;
 
         var prompt = textContent is not null
             ? $"""

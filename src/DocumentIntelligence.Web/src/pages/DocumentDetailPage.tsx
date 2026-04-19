@@ -1,9 +1,39 @@
-import { useParams, Link } from 'react-router-dom'
-import { useQuery } from '@tanstack/react-query'
+import { useParams, Link, useNavigate } from 'react-router-dom'
+import { useEffect, useState } from 'react'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { ArrowLeft, Trash2, Loader2, AlertCircle, ChevronDown, ScanText } from 'lucide-react'
 import api from '../lib/api'
 import { StatusBadge } from '../components/StatusBadge'
 import { useDocumentSignalR } from '../hooks/useDocumentSignalR'
 import type { DocumentDetailDto } from '../types/api'
+
+function useAuthenticatedFileUrl(documentId: string | undefined, contentType: string | undefined, enabled: boolean) {
+  const [blobUrl, setBlobUrl] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (!documentId || !contentType || !enabled) return
+    let revoked = false
+    let url: string | null = null
+
+    api.get(`/documents/${documentId}/file`, { responseType: 'blob' })
+      .then((res) => {
+        if (revoked) return
+        url = URL.createObjectURL(new Blob([res.data], { type: contentType }))
+        setBlobUrl(url)
+      })
+      .catch(() => { if (!revoked) setBlobUrl(null) })
+
+    return () => {
+      revoked = true
+      if (url) {
+        URL.revokeObjectURL(url)
+        setBlobUrl(null)
+      }
+    }
+  }, [documentId, contentType, enabled])
+
+  return blobUrl
+}
 
 function ExtractedFields({ json }: { json: string }) {
   try {
@@ -47,8 +77,18 @@ function ExtractedFields({ json }: { json: string }) {
 
 export default function DocumentDetailPage() {
   const { id } = useParams<{ id: string }>()
+  const navigate = useNavigate()
+  const queryClient = useQueryClient()
 
   useDocumentSignalR(id ?? null)
+
+  const deleteMutation = useMutation({
+    mutationFn: () => api.delete(`/documents/${id}`),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['documents'] })
+      navigate('/dashboard')
+    },
+  })
 
   const { data, isLoading, error } = useQuery({
     queryKey: ['document', id],
@@ -63,13 +103,22 @@ export default function DocumentDetailPage() {
     },
   })
 
+  const [docExpanded, setDocExpanded] = useState(false)
+  const fileUrl = useAuthenticatedFileUrl(data ? id : undefined, data?.contentType, docExpanded)
+
   if (isLoading) return <div className="text-sm text-gray-500 py-8 text-center">Loading…</div>
   if (error || !data) return <div className="text-sm text-red-600 py-8 text-center">Document not found.</div>
 
+  const isPdf = data.contentType === 'application/pdf'
+  const isImage = data.contentType.startsWith('image/')
+
   return (
-    <div className="max-w-3xl">
+    <div className="max-w-4xl">
       <div className="flex items-center gap-2 mb-1">
-        <Link to="/dashboard" className="text-sm text-blue-600 hover:underline">← Documents</Link>
+        <Link to="/dashboard" className="flex items-center gap-1 text-sm text-blue-600 hover:underline">
+          <ArrowLeft className="h-4 w-4" />
+          Documents
+        </Link>
       </div>
 
       <div className="flex items-start justify-between mb-6">
@@ -79,21 +128,33 @@ export default function DocumentDetailPage() {
             Uploaded {new Date(data.uploadedAt).toLocaleString()}
           </p>
         </div>
-        <StatusBadge status={data.statusLabel} />
+        <div className="flex items-center gap-3">
+          <StatusBadge status={data.statusLabel} />
+          <button
+            onClick={() => {
+              if (confirm(`Delete "${data.fileName}"?`)) {
+                deleteMutation.mutate()
+              }
+            }}
+            disabled={deleteMutation.isPending}
+            className="flex items-center gap-1.5 text-sm text-red-600 border border-red-200 rounded-md px-3 py-1 hover:bg-red-50 disabled:opacity-40"
+          >
+            <Trash2 className="h-4 w-4" />
+            {deleteMutation.isPending ? 'Deleting…' : 'Delete'}
+          </button>
+        </div>
       </div>
 
       {data.statusLabel === 'Failed' && data.errorMessage && (
-        <div className="mb-6 rounded-md bg-red-50 border border-red-200 text-red-700 px-4 py-3 text-sm">
-          <strong>Processing error:</strong> {data.errorMessage}
+        <div className="mb-6 rounded-md bg-red-50 border border-red-200 text-red-700 px-4 py-3 text-sm flex items-center gap-2">
+          <AlertCircle className="h-4 w-4 shrink-0" />
+          <span><strong>Processing error:</strong> {data.errorMessage}</span>
         </div>
       )}
 
       {(data.statusLabel === 'Pending' || data.statusLabel === 'Processing') && (
         <div className="mb-6 rounded-md bg-blue-50 border border-blue-200 text-blue-700 px-4 py-3 text-sm flex items-center gap-2">
-          <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24" fill="none">
-            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
-          </svg>
+          <Loader2 className="animate-spin h-4 w-4" />
           Document is being processed by Gemma 4…
         </div>
       )}
@@ -101,7 +162,10 @@ export default function DocumentDetailPage() {
       {data.extractionResult && (
         <div>
           <div className="flex items-center justify-between mb-3">
-            <h2 className="text-base font-semibold text-gray-900">Extracted fields</h2>
+            <h2 className="flex items-center gap-2 text-base font-semibold text-gray-900">
+              <ScanText className="h-4 w-4 text-gray-500" />
+              Extracted fields
+            </h2>
             <div className="text-xs text-gray-400">
               Model: {data.extractionResult.modelVersion} ·{' '}
               Confidence: {(data.extractionResult.confidenceScore * 100).toFixed(0)}%
@@ -110,6 +174,40 @@ export default function DocumentDetailPage() {
           <ExtractedFields json={data.extractionResult.extractedJson} />
         </div>
       )}
+
+      <div className="mt-8 border border-gray-200 rounded-xl overflow-hidden">
+        <button
+          onClick={() => setDocExpanded((v) => !v)}
+          className="w-full flex items-center justify-between px-4 py-3 bg-gray-50 hover:bg-gray-100 text-left"
+        >
+          <h2 className="text-base font-semibold text-gray-900">Document</h2>
+          <ChevronDown
+            className={`h-4 w-4 text-gray-500 transition-transform ${docExpanded ? 'rotate-180' : ''}`}
+          />
+        </button>
+        {docExpanded && (
+          <div className="p-4">
+            {!fileUrl && (
+              <div className="text-sm text-gray-400 py-4 text-center">Loading document…</div>
+            )}
+            {fileUrl && isPdf && (
+              <iframe
+                src={fileUrl}
+                title={data.fileName}
+                className="w-full rounded-lg border border-gray-200"
+                style={{ height: '80vh' }}
+              />
+            )}
+            {fileUrl && isImage && (
+              <img
+                src={fileUrl}
+                alt={data.fileName}
+                className="max-w-full rounded-lg border border-gray-200"
+              />
+            )}
+          </div>
+        )}
+      </div>
     </div>
   )
 }

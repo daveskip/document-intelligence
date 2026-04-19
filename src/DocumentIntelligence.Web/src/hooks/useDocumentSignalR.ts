@@ -20,30 +20,36 @@ export function useDocumentSignalR(documentId: string | null) {
   useEffect(() => {
     if (!documentId) return
 
-    const token = sessionStorage.getItem('accessToken')
+    let stopped = false
 
     const connection = new signalR.HubConnectionBuilder()
       .withUrl('/hubs/documents', {
-        accessTokenFactory: () => token ?? '',
+        accessTokenFactory: () => sessionStorage.getItem('accessToken') ?? '',
       })
       .withAutomaticReconnect()
-      .configureLogging(signalR.LogLevel.Warning)
+      .configureLogging(signalR.LogLevel.None)
       .build()
 
     connection.on('DocumentStatusChanged', handleStatusChanged)
 
     connection
       .start()
-      .then(() => connection.invoke('JoinDocumentGroup', documentId))
-      .catch((err) => console.error('SignalR connection error:', err))
+      .then(() => {
+        if (!stopped) return connection.invoke('JoinDocumentGroup', documentId)
+      })
+      .catch((err) => {
+        if (!stopped) console.error('SignalR connection error:', err)
+      })
 
     connectionRef.current = connection
 
     return () => {
-      connection
-        .invoke('LeaveDocumentGroup', documentId)
-        .catch(() => {})
-        .finally(() => connection.stop())
+      stopped = true
+      if (connection.state === signalR.HubConnectionState.Connected) {
+        connection.invoke('LeaveDocumentGroup', documentId).catch(() => {}).finally(() => connection.stop())
+      } else {
+        connection.stop()
+      }
     }
   }, [documentId, handleStatusChanged])
 }
@@ -59,20 +65,23 @@ export function useDashboardSignalR() {
   )
 
   useEffect(() => {
-    const token = sessionStorage.getItem('accessToken')
+    let stopped = false
 
     const connection = new signalR.HubConnectionBuilder()
       .withUrl('/hubs/documents', {
-        accessTokenFactory: () => token ?? '',
+        accessTokenFactory: () => sessionStorage.getItem('accessToken') ?? '',
       })
       .withAutomaticReconnect()
-      .configureLogging(signalR.LogLevel.Warning)
+      .configureLogging(signalR.LogLevel.None)
       .build()
 
     connection.on('DocumentStatusChanged', handleStatusChanged)
-    connection.start().catch((err) => console.error('SignalR error:', err))
+    connection.start().catch((err) => {
+      if (!stopped) console.error('SignalR error:', err)
+    })
 
     return () => {
+      stopped = true
       connection.stop()
     }
   }, [handleStatusChanged])

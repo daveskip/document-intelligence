@@ -24,6 +24,7 @@ public static class DocumentEndpoints
         group.MapPost("/", UploadDocumentAsync).DisableAntiforgery();
         group.MapGet("/", GetDocumentsAsync);
         group.MapGet("/{id:guid}", GetDocumentAsync);
+        group.MapGet("/{id:guid}/file", GetDocumentFileAsync);
         group.MapGet("/{id:guid}/results", GetExtractionResultAsync);
         group.MapDelete("/{id:guid}", DeleteDocumentAsync);
 
@@ -112,6 +113,24 @@ public static class DocumentEndpoints
         if (document.UploadedByUserId != userId) return Results.Forbid();
 
         return Results.Ok(MapToDetailDto(document));
+    }
+
+    private static async Task<IResult> GetDocumentFileAsync(
+        Guid id,
+        IDocumentRepository documentRepo,
+        IBlobStorageService blobService,
+        ClaimsPrincipal user,
+        CancellationToken ct)
+    {
+        var document = await documentRepo.GetByIdAsync(id, ct);
+        if (document is null) return Results.NotFound();
+
+        var userId = user.FindFirstValue(ClaimTypes.NameIdentifier)
+            ?? user.FindFirstValue("sub")!;
+        if (document.UploadedByUserId != userId) return Results.Forbid();
+
+        var stream = await blobService.DownloadAsync(document.BlobPath, ct);
+        return Results.Stream(stream, document.ContentType, document.FileName, enableRangeProcessing: true);
     }
 
     private static async Task<IResult> GetExtractionResultAsync(

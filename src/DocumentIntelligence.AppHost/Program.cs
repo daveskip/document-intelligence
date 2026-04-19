@@ -12,7 +12,7 @@ var db = postgres.AddDatabase("documentintelligence");
 
 // ── Azure Storage (Azurite) ────────────────────────────────────────────────
 var storage = builder.AddAzureStorage("storage")
-    .RunAsEmulator(c => 
+    .RunAsEmulator(c =>
         c.WithDataVolume("docint-azurite-data")
         .WithLifetime(ContainerLifetime.Persistent));
 
@@ -20,17 +20,17 @@ var blobs = storage.AddBlobs("document-blobs");
 
 // ── Azure Service Bus Emulator ─────────────────────────────────────────────
 var serviceBus = builder.AddAzureServiceBus("servicebus")
-    .RunAsEmulator(c => 
+    .RunAsEmulator(c =>
         c.WithConfigurationFile("./servicebus-config.json")
         .WithLifetime(ContainerLifetime.Persistent));
 
 serviceBus.AddServiceBusQueue("document-processing", "document-processing");
 
 // ── Ollama (Gemma 4) ───────────────────────────────────────────────────────
-var ollama = builder.AddOllama("ollama")
+var ollama = builder.AddOllama("ollama", port: 11434)
     .WithImageTag("latest")
     .WithDataVolume("docint-ollama-data")
-    .AddModel("gemma4");
+    .AddModel("gemma4:e2b");
 
 // ── API Service ────────────────────────────────────────────────────────────
 var apiService = builder.AddProject<Projects.DocumentIntelligence_ApiService>("apiservice")
@@ -54,7 +54,7 @@ builder.AddDockerfile("functions", "../..", "src/DocumentIntelligence.Functions/
     .WithReference(db)
     .WithReference(blobs)
     .WithReference(serviceBus)
-    .WithReference(ollama)
+    .WithEnvironment("services__ollama__http__0", "http://host.docker.internal:11434")
     .WithReference(apiService)
     .WaitFor(apiService)
     .WaitFor(serviceBus)

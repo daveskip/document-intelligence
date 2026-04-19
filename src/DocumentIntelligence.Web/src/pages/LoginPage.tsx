@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
+import { LogIn, AlertCircle, Loader2 } from 'lucide-react'
 import api from '../lib/api'
 import { useAuth } from '../context/AuthContext'
 import type { AuthResponse } from '../types/api'
@@ -30,9 +31,13 @@ export default function LoginPage() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50">
       <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-8 w-full max-w-md">
-        <h1 className="text-2xl font-semibold text-gray-900 mb-6">Sign in</h1>
+        <h1 className="flex items-center gap-2 text-2xl font-semibold text-gray-900 mb-6">
+          <LogIn className="h-6 w-6 text-blue-600" />
+          Sign in
+        </h1>
         {error && (
-          <div className="mb-4 rounded-md bg-red-50 border border-red-200 text-red-700 px-4 py-3 text-sm">
+          <div className="mb-4 rounded-md bg-red-50 border border-red-200 text-red-700 px-4 py-3 text-sm flex items-center gap-2">
+            <AlertCircle className="h-4 w-4 shrink-0" />
             {error}
           </div>
         )}
@@ -62,9 +67,11 @@ export default function LoginPage() {
           <button
             type="submit"
             disabled={loading}
-            className="bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white font-medium rounded-md px-4 py-2 text-sm"
+            className="flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white font-medium rounded-md px-4 py-2 text-sm"
           >
-            {loading ? 'Signing in…' : 'Sign in'}
+            {loading
+              ? <><Loader2 className="h-4 w-4 animate-spin" /> Signing in…</>
+              : <><LogIn className="h-4 w-4" /> Sign in</>}
           </button>
         </form>
         <p className="mt-4 text-sm text-gray-500 text-center">

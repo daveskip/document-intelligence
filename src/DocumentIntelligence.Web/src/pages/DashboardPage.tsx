@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { Upload, Eye, Trash2, ChevronLeft, ChevronRight, Loader2, AlertCircle, Inbox, FileText } from 'lucide-react'
 import api from '../lib/api'
 import { StatusBadge } from '../components/StatusBadge'
 import { useDashboardSignalR } from '../hooks/useDocumentSignalR'
@@ -16,8 +17,14 @@ function formatBytes(bytes: number) {
 
 export default function DashboardPage() {
   const [page, setPage] = useState(1)
+  const queryClient = useQueryClient()
 
   useDashboardSignalR()
+
+  const deleteMutation = useMutation({
+    mutationFn: (id: string) => api.delete(`/documents/${id}`),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['documents'] }),
+  })
 
   const { data, isLoading, error } = useQuery({
     queryKey: ['documents', page],
@@ -35,22 +42,30 @@ export default function DashboardPage() {
         <h1 className="text-xl font-semibold text-gray-900">Documents</h1>
         <Link
           to="/upload"
-          className="bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-md px-4 py-2"
+          className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-md px-4 py-2"
         >
+          <Upload className="h-4 w-4" />
           Upload document
         </Link>
       </div>
 
       {isLoading && (
-        <div className="text-sm text-gray-500 py-8 text-center">Loading…</div>
+        <div className="flex items-center justify-center gap-2 text-sm text-gray-500 py-8">
+          <Loader2 className="h-4 w-4 animate-spin" />
+          Loading…
+        </div>
       )}
 
       {error && (
-        <div className="text-sm text-red-600 py-8 text-center">Failed to load documents.</div>
+        <div className="flex items-center justify-center gap-2 text-sm text-red-600 py-8">
+          <AlertCircle className="h-4 w-4" />
+          Failed to load documents.
+        </div>
       )}
 
       {data && data.items.length === 0 && (
         <div className="text-sm text-gray-500 py-12 text-center">
+          <Inbox className="h-10 w-10 text-gray-300 mx-auto mb-2" />
           No documents yet.{' '}
           <Link to="/upload" className="text-blue-600 hover:underline">
             Upload one
@@ -75,7 +90,12 @@ export default function DashboardPage() {
               <tbody className="divide-y divide-gray-200">
                 {data.items.map((doc) => (
                   <tr key={doc.id} className="hover:bg-gray-50">
-                    <td className="px-6 py-4 text-sm text-gray-900 max-w-xs truncate">{doc.fileName}</td>
+                    <td className="px-6 py-4 text-sm text-gray-900 max-w-xs">
+                      <span className="flex items-center gap-1.5 truncate">
+                        <FileText className="h-4 w-4 text-gray-400 shrink-0" />
+                        {doc.fileName}
+                      </span>
+                    </td>
                     <td className="px-6 py-4 text-sm text-gray-500">{formatBytes(doc.fileSize)}</td>
                     <td className="px-6 py-4">
                       <StatusBadge status={doc.statusLabel} />
@@ -84,12 +104,27 @@ export default function DashboardPage() {
                       {new Date(doc.uploadedAt).toLocaleString()}
                     </td>
                     <td className="px-6 py-4 text-right">
-                      <Link
-                        to={`/documents/${doc.id}`}
-                        className="text-sm text-blue-600 hover:underline"
-                      >
-                        View
-                      </Link>
+                      <div className="flex items-center justify-end gap-3">
+                        <Link
+                          to={`/documents/${doc.id}`}
+                          className="flex items-center gap-1 text-sm text-blue-600 hover:underline"
+                        >
+                          <Eye className="h-4 w-4" />
+                          View
+                        </Link>
+                        <button
+                          onClick={() => {
+                            if (confirm(`Delete "${doc.fileName}"?`)) {
+                              deleteMutation.mutate(doc.id)
+                            }
+                          }}
+                          disabled={deleteMutation.isPending}
+                          className="flex items-center gap-1 text-sm text-red-600 hover:underline disabled:opacity-40"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                          Delete
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -106,16 +141,18 @@ export default function DashboardPage() {
                 <button
                   onClick={() => setPage((p) => p - 1)}
                   disabled={!data.hasPreviousPage}
-                  className="border border-gray-300 rounded-md px-3 py-1 disabled:opacity-40"
+                  className="flex items-center gap-1 border border-gray-300 rounded-md px-3 py-1 disabled:opacity-40"
                 >
+                  <ChevronLeft className="h-4 w-4" />
                   Previous
                 </button>
                 <button
                   onClick={() => setPage((p) => p + 1)}
                   disabled={!data.hasNextPage}
-                  className="border border-gray-300 rounded-md px-3 py-1 disabled:opacity-40"
+                  className="flex items-center gap-1 border border-gray-300 rounded-md px-3 py-1 disabled:opacity-40"
                 >
                   Next
+                  <ChevronRight className="h-4 w-4" />
                 </button>
               </div>
             </div>

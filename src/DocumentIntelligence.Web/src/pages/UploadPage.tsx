@@ -1,5 +1,6 @@
 import { useState, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { UploadCloud, FileCheck2, AlertCircle, Upload, X, Loader2 } from 'lucide-react'
 import api from '../lib/api'
 
 const ACCEPTED_TYPES = [
@@ -83,11 +84,13 @@ export default function UploadPage() {
         />
         {file ? (
           <div>
+            <FileCheck2 className="h-10 w-10 text-blue-500 mx-auto mb-3" />
             <p className="text-sm font-medium text-gray-900">{file.name}</p>
             <p className="text-xs text-gray-500 mt-1">{(file.size / 1024).toFixed(1)} KB</p>
           </div>
         ) : (
           <div>
+            <UploadCloud className="h-10 w-10 text-gray-300 mx-auto mb-3" />
             <p className="text-sm text-gray-600">
               <span className="text-blue-600 font-medium">Click to browse</span> or drag a file here
             </p>
@@ -97,7 +100,8 @@ export default function UploadPage() {
       </div>
 
       {error && (
-        <div className="mt-4 rounded-md bg-red-50 border border-red-200 text-red-700 px-4 py-3 text-sm">
+        <div className="mt-4 rounded-md bg-red-50 border border-red-200 text-red-700 px-4 py-3 text-sm flex items-center gap-2">
+          <AlertCircle className="h-4 w-4 shrink-0" />
           {error}
         </div>
       )}
@@ -120,14 +124,18 @@ export default function UploadPage() {
         <button
           onClick={handleUpload}
           disabled={!file || progress !== null}
-          className="bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white font-medium rounded-md px-6 py-2 text-sm"
+          className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white font-medium rounded-md px-6 py-2 text-sm"
         >
-          Upload & process
+          {progress !== null
+            ? <Loader2 className="h-4 w-4 animate-spin" />
+            : <Upload className="h-4 w-4" />}
+          Upload &amp; process
         </button>
         <button
           onClick={() => navigate('/dashboard')}
-          className="border border-gray-300 text-gray-700 font-medium rounded-md px-6 py-2 text-sm hover:bg-gray-50"
+          className="flex items-center gap-2 border border-gray-300 text-gray-700 font-medium rounded-md px-6 py-2 text-sm hover:bg-gray-50"
         >
+          <X className="h-4 w-4" />
           Cancel
         </button>
       </div>

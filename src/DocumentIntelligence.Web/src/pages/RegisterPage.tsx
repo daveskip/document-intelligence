@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
+import { UserPlus, AlertCircle, Loader2 } from 'lucide-react'
 import api from '../lib/api'
 import { useAuth } from '../context/AuthContext'
 import type { AuthResponse } from '../types/api'
@@ -41,12 +42,18 @@ export default function RegisterPage() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50">
       <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-8 w-full max-w-md">
-        <h1 className="text-2xl font-semibold text-gray-900 mb-6">Create account</h1>
+        <h1 className="flex items-center gap-2 text-2xl font-semibold text-gray-900 mb-6">
+          <UserPlus className="h-6 w-6 text-blue-600" />
+          Create account
+        </h1>
         {errors.length > 0 && (
           <div className="mb-4 rounded-md bg-red-50 border border-red-200 text-red-700 px-4 py-3 text-sm">
-            <ul className="list-disc list-inside space-y-1">
-              {errors.map((e, i) => <li key={i}>{e}</li>)}
-            </ul>
+            <div className="flex items-start gap-2">
+              <AlertCircle className="h-4 w-4 shrink-0 mt-0.5" />
+              <ul className="list-disc list-inside space-y-1">
+                {errors.map((e, i) => <li key={i}>{e}</li>)}
+              </ul>
+            </div>
           </div>
         )}
         <form onSubmit={handleSubmit} className="flex flex-col gap-4">
@@ -85,9 +92,11 @@ export default function RegisterPage() {
           <button
             type="submit"
             disabled={loading}
-            className="bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white font-medium rounded-md px-4 py-2 text-sm"
+            className="flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white font-medium rounded-md px-4 py-2 text-sm"
           >
-            {loading ? 'Creating account…' : 'Create account'}
+            {loading
+              ? <><Loader2 className="h-4 w-4 animate-spin" /> Creating account…</>
+              : <><UserPlus className="h-4 w-4" /> Create account</>}
           </button>
         </form>
         <p className="mt-4 text-sm text-gray-500 text-center">
