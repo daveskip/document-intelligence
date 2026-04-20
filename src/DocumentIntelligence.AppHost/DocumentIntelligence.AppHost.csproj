@@ -24,5 +24,5 @@
     <ProjectReference Include="..\DocumentIntelligence.ApiService\DocumentIntelligence.ApiService.csproj" IsAspireProjectResource="true" />
     <ProjectReference Include="..\DocumentIntelligence.Functions\DocumentIntelligence.Functions.csproj" IsAspireProjectResource="true" />
   </ItemGroup>
-
+  
 </Project>

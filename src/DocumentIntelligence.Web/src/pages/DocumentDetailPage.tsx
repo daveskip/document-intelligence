@@ -4,6 +4,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { ArrowLeft, Trash2, Loader2, AlertCircle, ChevronDown, ScanText } from 'lucide-react'
 import api from '../lib/api'
 import { StatusBadge } from '../components/StatusBadge'
+import { ExtractionTable } from '../components/ExtractionTable'
 import { useDocumentSignalR } from '../hooks/useDocumentSignalR'
 import type { DocumentDetailDto } from '../types/api'
 
@@ -41,6 +42,13 @@ function ExtractedFields({ json }: { json: string }) {
     const metadata = data._metadata
     const fields = Object.entries(data).filter(([k]) => k !== '_metadata')
 
+    const isTable = ([, v]: [string, unknown]) =>
+      Array.isArray(v) && v.length > 0 && typeof v[0] === 'object' && v[0] !== null
+
+    const scalarFields = fields.filter(([k, v]) => k !== 'extracted_data' && !isTable([k, v]))
+    const tableFields  = fields.filter(([k, v]) => k !== 'extracted_data' && isTable([k, v]))
+    const extractedData = fields.find(([k]) => k === 'extracted_data')
+
     return (
       <div>
         {metadata && (
@@ -52,8 +60,10 @@ function ExtractedFields({ json }: { json: string }) {
             )}
           </div>
         )}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          {fields.map(([key, value]) => (
+
+        {/* Key value fields */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
+          {scalarFields.map(([key, value]) => (
             <div key={key} className="border border-gray-200 rounded-lg p-3">
               <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">
                 {key.replace(/([A-Z])/g, ' $1').trim()}
@@ -69,6 +79,31 @@ function ExtractedFields({ json }: { json: string }) {
             </div>
           ))}
         </div>
+
+        {/* Tables */}
+        {tableFields.map(([key, value]) => (
+          <div key={key} className="mb-4">
+            <ExtractionTable fieldName={key} rows={value as Record<string, unknown>[]} />
+          </div>
+        ))}
+
+        {/* extracted_data */}
+        {extractedData && (() => {
+          const [key, value] = extractedData
+          return (
+            <div className="border border-gray-200 rounded-lg p-3">
+              <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">
+                {key.replace(/([A-Z])/g, ' $1').trim()}
+              </p>
+              {value === null || value === undefined
+                ? <p className="text-sm text-gray-400 italic">—</p>
+                : typeof value === 'object'
+                  ? <pre className="text-xs text-gray-700 bg-gray-50 rounded p-2 overflow-auto whitespace-pre-wrap">{JSON.stringify(value, null, 2)}</pre>
+                  : <p className="text-sm text-gray-900">{String(value)}</p>
+              }
+            </div>
+          )
+        })()}
       </div>
     )
   } catch {

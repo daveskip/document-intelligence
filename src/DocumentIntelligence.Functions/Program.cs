@@ -13,11 +13,16 @@ var host = new HostBuilder()
         // DbContext, BlobServiceClient, IDocumentRepository, IBlobStorageService
         services.AddInfrastructureForFunctions(context.Configuration);
 
-        // Ollama via Aspire-injected service endpoint
-        var ollamaUrl = context.Configuration["services:ollama:http:0"]
+        // Ollama via Aspire-injected service endpoint.
+        // AddAzureFunctionsProject injects WithReference(ollama) as a connection string
+        // in the format "Endpoint=http://localhost:11434", so parse the Endpoint value if present.
+        var ollamaRaw = context.Configuration["services:ollama:http:0"]
             ?? context.Configuration["services:ollama:https:0"]
             ?? context.Configuration.GetConnectionString("ollama")
             ?? throw new InvalidOperationException("Ollama endpoint not found in configuration.");
+        var ollamaUrl = ollamaRaw.StartsWith("Endpoint=", StringComparison.OrdinalIgnoreCase)
+            ? ollamaRaw["Endpoint=".Length..]
+            : ollamaRaw;
         services.AddSingleton(new OllamaApiClient(
             new HttpClient { BaseAddress = new Uri(ollamaUrl), Timeout = TimeSpan.FromMinutes(10) }));
 

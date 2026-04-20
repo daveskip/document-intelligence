@@ -64,7 +64,11 @@ public static class InfrastructureExtensions
             ?? throw new InvalidOperationException("ConnectionStrings:documentintelligence not configured.");
         services.AddDbContext<AppDbContext>(options => options.UseNpgsql(pgConn));
 
+        // When running locally via AddAzureFunctionsProject, Aspire injects the storage account
+        // connection string as AzureWebJobsStorage (via WithHostStorage). The blob sub-resource
+        // may not expose its own ConnectionStrings entry, so fall back to AzureWebJobsStorage.
         var blobConn = config["ConnectionStrings:document-blobs"]
+            ?? config["AzureWebJobsStorage"]
             ?? throw new InvalidOperationException("ConnectionStrings:document-blobs not configured.");
         services.AddSingleton(_ => new BlobServiceClient(blobConn));
 

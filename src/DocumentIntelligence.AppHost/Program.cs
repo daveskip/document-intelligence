@@ -30,12 +30,13 @@ serviceBus.AddServiceBusQueue("document-processing", "document-processing");
 // Generated fresh each AppHost start in dev. In production provide via Key Vault / env.
 var internalSharedKey = $"{Guid.NewGuid()}-{Guid.NewGuid()}";
 
-// ── Ollama (Gemma 4) ───────────────────────────────────────────────────────
+// ── Ollama ────────────────────────────────────────────────────────────────
 var ollama = builder.AddOllama("ollama", port: 11434)
     .WithImageTag("latest")
     .WithDataVolume("docint-ollama-data")
-    .WithGPUSupport()
-    .AddModel("gemma4:e4b");
+    .WithGPUSupport();
+// Previously used "gemma4:e4b".
+ollama.AddModel("qwen2.5vl:7b");
 
 // ── API Service ────────────────────────────────────────────────────────────
 var apiService = builder.AddProject<Projects.DocumentIntelligence_ApiService>("apiservice")
@@ -48,26 +49,17 @@ var apiService = builder.AddProject<Projects.DocumentIntelligence_ApiService>("a
     .WaitFor(blobs)
     .WaitFor(serviceBus);
 
-// ── Azure Functions Processor ──────────────────────────────────────────────
-builder.AddDockerfile("functions", "../..", "src/DocumentIntelligence.Functions/Dockerfile")
-    .WithHttpEndpoint(targetPort: 80)
-    .WithEnvironment("ASPNETCORE_ENVIRONMENT", "Development")
-    .WithEnvironment("DOTNET_ENVIRONMENT", "Development")
-    .WithEnvironment("AZURE_FUNCTIONS_ENVIRONMENT", "Development")
-    .WithEnvironment("FUNCTIONS_WORKER_RUNTIME", "dotnet-isolated")
-    .WithEnvironment("AzureFunctionsJobHost__Logging__LogLevel__Default", "Information")
-    .WithEnvironment("AzureFunctionsJobHost__Logging__LogLevel__Host", "Warning")
-    .WithEnvironment("AzureWebJobsStorage", blobs.Resource.ConnectionStringExpression)
-    .WithEnvironment("servicebus", serviceBus.Resource.ConnectionStringExpression)
+// ── Azure Functions Processor (runs locally for easier debugging) ─────────
+builder.AddAzureFunctionsProject<Projects.DocumentIntelligence_Functions>("functions")
+    .WithHostStorage(storage)
+    .WithEnvironment("Internal__SharedKey", internalSharedKey)
     .WithReference(db)
     .WithReference(blobs)
     .WithReference(serviceBus)
-    .WithEnvironment("services__ollama__http__0", "http://host.docker.internal:11434")
-    .WithEnvironment("Internal__SharedKey", internalSharedKey)
+    .WithReference(ollama)
     .WithReference(apiService)
     .WaitFor(apiService)
-    .WaitFor(serviceBus)
-    .WaitFor(ollama);
+    .WaitFor(serviceBus);
 
 // ── React Frontend (Vite dev server) ──────────────────────────────────────
 builder.AddViteApp("web", "../../src/DocumentIntelligence.Web")
