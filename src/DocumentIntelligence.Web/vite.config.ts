@@ -6,7 +6,8 @@ import mkcert from 'vite-plugin-mkcert'
 export default defineConfig({
   plugins: [react(), tailwindcss(), mkcert()],
   server: {
-    port: parseInt(process.env.VITE_PORT ?? '5173'),
+    host: process.env.VITE_HOST ?? '127.0.0.1',
+    port: parseInt(process.env.VITE_PORT ?? '5300'),
     https: {},
     strictPort: true,
     proxy: {

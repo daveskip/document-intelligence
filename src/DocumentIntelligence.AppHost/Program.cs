@@ -30,6 +30,7 @@ serviceBus.AddServiceBusQueue("document-processing", "document-processing");
 var ollama = builder.AddOllama("ollama", port: 11434)
     .WithImageTag("latest")
     .WithDataVolume("docint-ollama-data")
+    .WithGPUSupport()
     .AddModel("gemma4:e4b");
 
 // ── API Service ────────────────────────────────────────────────────────────
@@ -64,7 +65,7 @@ builder.AddDockerfile("functions", "../..", "src/DocumentIntelligence.Functions/
 
 // ── React Frontend (Vite dev server) ──────────────────────────────────────
 builder.AddViteApp("web", "../../src/DocumentIntelligence.Web")
-    .WithHttpsEndpoint(port: 5173, env: "VITE_PORT")
+    .WithHttpsEndpoint(port: 5300, env: "VITE_PORT")
     .WithReference(apiService)
     .WaitFor(apiService);
 
