@@ -7,6 +7,7 @@ public interface IBlobStorageService
 {
     Task<string> UploadAsync(Stream content, string fileName, string contentType, CancellationToken ct = default);
     Task<Stream> DownloadAsync(string blobPath, CancellationToken ct = default);
+    Task<byte[]> DownloadBytesAsync(string blobPath, CancellationToken ct = default);
     Task DeleteAsync(string blobPath, CancellationToken ct = default);
 }
 
@@ -36,6 +37,14 @@ public class BlobStorageService(BlobServiceClient blobServiceClient) : IBlobStor
         var blob = container.GetBlobClient(blobPath);
         var response = await blob.DownloadStreamingAsync(cancellationToken: ct);
         return response.Value.Content;
+    }
+
+    public async Task<byte[]> DownloadBytesAsync(string blobPath, CancellationToken ct = default)
+    {
+        using var stream = await DownloadAsync(blobPath, ct);
+        using var ms = new MemoryStream();
+        await stream.CopyToAsync(ms, ct);
+        return ms.ToArray();
     }
 
     public async Task DeleteAsync(string blobPath, CancellationToken ct = default)

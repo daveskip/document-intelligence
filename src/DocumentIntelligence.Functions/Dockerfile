@@ -27,7 +27,12 @@ RUN dotnet publish "./DocumentIntelligence.Functions.csproj" -c $BUILD_CONFIGURA
 
 # This stage is used in production or when running from VS in regular mode (Default when not using the Debug configuration)
 FROM base AS final
+# Create and switch to a non-root user for defence-in-depth.
+RUN useradd --uid 1001 --create-home funcuser
 WORKDIR /home/site/wwwroot
+COPY --from=publish /app/publish .
+RUN chown -R funcuser:funcuser /home/site/wwwroot
+USER funcuser
 COPY --from=publish /app/publish .
 ENV AzureWebJobsScriptRoot=/home/site/wwwroot \
     AzureFunctionsJobHost__Logging__Console__IsEnabled=true

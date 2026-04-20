@@ -1,7 +1,6 @@
-using Azure.Storage.Blobs;
-using DocumentIntelligence.Infrastructure.Data;
+using DocumentIntelligence.Functions.Services;
+using DocumentIntelligence.Infrastructure;
 using Microsoft.Azure.Functions.Worker;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -11,16 +10,8 @@ var host = new HostBuilder()
     .ConfigureFunctionsWorkerDefaults()
     .ConfigureServices((context, services) =>
     {
-        // PostgreSQL via Aspire-injected connection string
-        var pgConn = context.Configuration["ConnectionStrings:documentintelligence"]
-            ?? throw new InvalidOperationException("ConnectionStrings:documentintelligence not found.");
-        services.AddDbContext<AppDbContext>(options =>
-            options.UseNpgsql(pgConn));
-
-        // Azure Blob Storage via Aspire-injected connection string
-        var blobConn = context.Configuration["ConnectionStrings:document-blobs"]
-            ?? throw new InvalidOperationException("ConnectionStrings:document-blobs not found.");
-        services.AddSingleton(_ => new BlobServiceClient(blobConn));
+        // DbContext, BlobServiceClient, IDocumentRepository, IBlobStorageService
+        services.AddInfrastructureForFunctions(context.Configuration);
 
         // Ollama via Aspire-injected service endpoint
         var ollamaUrl = context.Configuration["services:ollama:http:0"]
@@ -29,6 +20,9 @@ var host = new HostBuilder()
             ?? throw new InvalidOperationException("Ollama endpoint not found in configuration.");
         services.AddSingleton(new OllamaApiClient(
             new HttpClient { BaseAddress = new Uri(ollamaUrl), Timeout = TimeSpan.FromMinutes(10) }));
+
+        // Document extraction: AI prompting + content parsing
+        services.AddScoped<IDocumentExtractionService, DocumentExtractionService>();
 
         // HttpClient for calling back to ApiService (Aspire service discovery URL)
         services.AddHttpClient("apiservice", (sp, client) =>

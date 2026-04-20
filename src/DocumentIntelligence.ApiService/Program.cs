@@ -1,80 +1,62 @@
-using System.Text;
+using System.Threading.RateLimiting;
 using DocumentIntelligence.ApiService.Endpoints;
 using DocumentIntelligence.ApiService.Hubs;
 using DocumentIntelligence.Infrastructure;
-using Microsoft.AspNetCore.Authentication.JwtBearer;
-using Microsoft.IdentityModel.Tokens;
+using Microsoft.AspNetCore.RateLimiting;
 
 var builder = WebApplication.CreateBuilder(args);
 
 builder.AddServiceDefaults();
-
-// ── Infrastructure (DB, Blob, Bus, Identity) ───────────────────────────────
 builder.AddInfrastructure();
 
-// ── JWT Authentication ─────────────────────────────────────────────────────
-var jwtKey = builder.Configuration["Jwt:Key"]
-    ?? throw new InvalidOperationException("Jwt:Key must be configured.");
-
-builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
-    .AddJwtBearer(options =>
-    {
-        options.TokenValidationParameters = new TokenValidationParameters
-        {
-            ValidateIssuerSigningKey = true,
-            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey)),
-            ValidateIssuer = true,
-            ValidIssuer = builder.Configuration["Jwt:Issuer"] ?? "DocumentIntelligence",
-            ValidateAudience = true,
-            ValidAudience = builder.Configuration["Jwt:Audience"] ?? "DocumentIntelligence",
-            ValidateLifetime = true,
-            ClockSkew = TimeSpan.FromMinutes(1)
-        };
-
-        // Allow JWT from SignalR query string
-        options.Events = new JwtBearerEvents
-        {
-            OnMessageReceived = context =>
-            {
-                var accessToken = context.Request.Query["access_token"];
-                var path = context.HttpContext.Request.Path;
-                if (!string.IsNullOrEmpty(accessToken) && path.StartsWithSegments("/hubs"))
-                {
-                    context.Token = accessToken;
-                }
-                return Task.CompletedTask;
-            }
-        };
-    });
-
-builder.Services.AddAuthorization();
-
-// ── SignalR ────────────────────────────────────────────────────────────────
+// ── Auth, CORS, API features (defined in ServiceDefaults) ──────────────────
+builder.AddJwtAuthentication();
 builder.Services.AddSignalR();
+builder.AddFrontendCors();
+builder.AddApiFeatures();
 
-// ── CORS (allow Vite dev server) ───────────────────────────────────────────
-builder.Services.AddCors(options =>
+// ── Rate limiting ──────────────────────────────────────────────────────────
+// Auth: fixed window per IP — limits brute-force / credential stuffing.
+// Upload: sliding window per IP — limits excessive document uploads.
+builder.Services.AddRateLimiter(options =>
 {
-    options.AddPolicy("FrontendPolicy", policy =>
-    {
-        policy.WithOrigins(
-                builder.Configuration["AllowedOrigins:Vite"] ?? "http://localhost:5173")
-            .AllowAnyHeader()
-            .AllowAnyMethod()
-            .AllowCredentials();
-    });
+    options.AddPolicy("auth", httpContext =>
+        RateLimitPartition.GetFixedWindowLimiter(
+            httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+            _ => new FixedWindowRateLimiterOptions
+            {
+                PermitLimit = 10,
+                Window = TimeSpan.FromMinutes(1),
+                QueueProcessingOrder = QueueProcessingOrder.OldestFirst,
+                QueueLimit = 0
+            }));
+
+    options.AddPolicy("upload", httpContext =>
+        RateLimitPartition.GetSlidingWindowLimiter(
+            httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+            _ => new SlidingWindowRateLimiterOptions
+            {
+                PermitLimit = 20,
+                Window = TimeSpan.FromHours(1),
+                SegmentsPerWindow = 12,
+                QueueProcessingOrder = QueueProcessingOrder.OldestFirst,
+                QueueLimit = 0
+            }));
+
+    options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
 });
-
-// ── Problem Details ────────────────────────────────────────────────────────
-builder.Services.AddProblemDetails();
-
-// ── OpenAPI ────────────────────────────────────────────────────────────────
-builder.Services.AddOpenApi();
 
 var app = builder.Build();
 
+// ── Startup configuration validation ──────────────────────────────────────
+if (string.IsNullOrEmpty(app.Configuration["Internal:SharedKey"]))
+    throw new InvalidOperationException("Internal:SharedKey must be configured before starting the API.");
+
 // ── Apply EF Migrations ────────────────────────────────────────────────────
-await app.Services.ApplyMigrationsAsync();
+if (app.Configuration.GetValue("ApplyMigrationsOnStartup", defaultValue: true))
+{
+    await app.Services.ApplyMigrationsAsync();
+}
 
 // ── Middleware pipeline ────────────────────────────────────────────────────
 if (app.Environment.IsDevelopment())
@@ -83,6 +65,7 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseExceptionHandler();
+app.UseRateLimiter();
 app.UseCors("FrontendPolicy");
 app.UseAuthentication();
 app.UseAuthorization();

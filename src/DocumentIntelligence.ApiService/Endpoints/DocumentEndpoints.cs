@@ -17,16 +17,49 @@ public static class DocumentEndpoints
 
     public static IEndpointRouteBuilder MapDocumentEndpoints(this IEndpointRouteBuilder app)
     {
-        var group = app.MapGroup("/api/documents")
+        var group = app.MapGroup("/api/v1/documents")
             .WithTags("Documents")
             .RequireAuthorization();
 
-        group.MapPost("/", UploadDocumentAsync).DisableAntiforgery();
-        group.MapGet("/", GetDocumentsAsync);
-        group.MapGet("/{id:guid}", GetDocumentAsync);
-        group.MapGet("/{id:guid}/file", GetDocumentFileAsync);
-        group.MapGet("/{id:guid}/results", GetExtractionResultAsync);
-        group.MapDelete("/{id:guid}", DeleteDocumentAsync);
+        group.MapPost("/", UploadDocumentAsync).DisableAntiforgery().RequireRateLimiting("upload")
+            .WithName("UploadDocument")
+            .WithSummary("Upload a document for AI extraction.")
+            .Produces<DocumentDto>(StatusCodes.Status201Created)
+            .ProducesProblem(StatusCodes.Status400BadRequest);
+
+        group.MapGet("/", GetDocumentsAsync)
+            .WithName("GetDocuments")
+            .WithSummary("Get a paged list of the authenticated user's documents.")
+            .Produces<PagedResult<DocumentDto>>()
+            .ProducesProblem(StatusCodes.Status400BadRequest);
+
+        group.MapGet("/{id:guid}", GetDocumentAsync)
+            .WithName("GetDocument")
+            .WithSummary("Get document details by ID.")
+            .Produces<DocumentDetailDto>()
+            .ProducesProblem(StatusCodes.Status403Forbidden)
+            .ProducesProblem(StatusCodes.Status404NotFound);
+
+        group.MapGet("/{id:guid}/file", GetDocumentFileAsync)
+            .WithName("GetDocumentFile")
+            .WithSummary("Download the original uploaded file.")
+            .Produces(StatusCodes.Status200OK)
+            .ProducesProblem(StatusCodes.Status403Forbidden)
+            .ProducesProblem(StatusCodes.Status404NotFound);
+
+        group.MapGet("/{id:guid}/results", GetExtractionResultAsync)
+            .WithName("GetExtractionResult")
+            .WithSummary("Get the AI extraction result for a document.")
+            .Produces<ExtractionResultDto>()
+            .ProducesProblem(StatusCodes.Status403Forbidden)
+            .ProducesProblem(StatusCodes.Status404NotFound);
+
+        group.MapDelete("/{id:guid}", DeleteDocumentAsync)
+            .WithName("DeleteDocument")
+            .WithSummary("Delete a document and its associated blob storage file.")
+            .Produces(StatusCodes.Status204NoContent)
+            .ProducesProblem(StatusCodes.Status403Forbidden)
+            .ProducesProblem(StatusCodes.Status404NotFound);
 
         return app;
     }
@@ -48,17 +81,22 @@ public static class DocumentEndpoints
         if (!AllowedContentTypes.Contains(file.ContentType))
             return Results.BadRequest($"Unsupported file type: {file.ContentType}");
 
+        // Sanitize filename: strip directory components and block path traversal.
+        var safeFileName = Path.GetFileName(file.FileName);
+        if (string.IsNullOrWhiteSpace(safeFileName) || safeFileName.Contains(".."))
+            return Results.BadRequest("Invalid file name.");
+
         var userId = user.FindFirstValue(ClaimTypes.NameIdentifier)
             ?? user.FindFirstValue("sub")
             ?? throw new UnauthorizedAccessException("User ID claim not found.");
 
         await using var stream = file.OpenReadStream();
-        var blobPath = await blobService.UploadAsync(stream, file.FileName, file.ContentType, ct);
+        var blobPath = await blobService.UploadAsync(stream, safeFileName, file.ContentType, ct);
 
         var document = new Document
         {
             Id = Guid.NewGuid(),
-            FileName = file.FileName,
+            FileName = safeFileName,
             BlobPath = blobPath,
             ContentType = file.ContentType,
             FileSize = file.Length,
@@ -87,8 +125,10 @@ public static class DocumentEndpoints
         [FromQuery] int pageSize = 20,
         CancellationToken ct = default)
     {
-        if (page < 1) page = 1;
-        if (pageSize is < 1 or > 100) pageSize = 20;
+        if (page < 1)
+            return Results.BadRequest("Page must be 1 or greater.");
+        if (pageSize is < 1 or > 100)
+            return Results.BadRequest("Page size must be between 1 and 100.");
 
         var userId = user.FindFirstValue(ClaimTypes.NameIdentifier)
             ?? user.FindFirstValue("sub")!;

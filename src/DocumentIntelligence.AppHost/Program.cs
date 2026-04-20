@@ -26,6 +26,10 @@ var serviceBus = builder.AddAzureServiceBus("servicebus")
 
 serviceBus.AddServiceBusQueue("document-processing", "document-processing");
 
+// ── Service-to-service shared key ───────────────────────────────────────────
+// Generated fresh each AppHost start in dev. In production provide via Key Vault / env.
+var internalSharedKey = $"{Guid.NewGuid()}-{Guid.NewGuid()}";
+
 // ── Ollama (Gemma 4) ───────────────────────────────────────────────────────
 var ollama = builder.AddOllama("ollama", port: 11434)
     .WithImageTag("latest")
@@ -36,6 +40,7 @@ var ollama = builder.AddOllama("ollama", port: 11434)
 // ── API Service ────────────────────────────────────────────────────────────
 var apiService = builder.AddProject<Projects.DocumentIntelligence_ApiService>("apiservice")
     .WithEnvironment("ASPNETCORE_ENVIRONMENT", "Development")
+    .WithEnvironment("Internal__SharedKey", internalSharedKey)
     .WithReference(db)
     .WithReference(blobs)
     .WithReference(serviceBus)
@@ -58,6 +63,7 @@ builder.AddDockerfile("functions", "../..", "src/DocumentIntelligence.Functions/
     .WithReference(blobs)
     .WithReference(serviceBus)
     .WithEnvironment("services__ollama__http__0", "http://host.docker.internal:11434")
+    .WithEnvironment("Internal__SharedKey", internalSharedKey)
     .WithReference(apiService)
     .WaitFor(apiService)
     .WaitFor(serviceBus)
