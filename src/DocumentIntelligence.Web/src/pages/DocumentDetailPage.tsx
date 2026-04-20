@@ -81,11 +81,39 @@ function ExtractedFields({ json }: { json: string }) {
         </div>
 
         {/* Tables */}
-        {tableFields.map(([key, value]) => (
-          <div key={key} className="mb-4">
-            <ExtractionTable fieldName={key} rows={value as Record<string, unknown>[]} />
-          </div>
-        ))}
+        {tableFields.map(([key, value]) => {
+          const rows = value as Record<string, unknown>[]
+          // The AI model returns a top-level "tables" key whose elements are
+          // { name/title: string, rows/data: object[] } — unwrap and render each
+          // as its own labelled table instead of showing nested objects as cells.
+          const isNestedTableArray = rows.every(r =>
+            typeof r === 'object' && r !== null &&
+            ['name', 'title', 'tableName', 'table_name', 'section'].some(k => typeof r[k] === 'string') &&
+            ['rows', 'data', 'items', 'entries'].some(k => Array.isArray(r[k]))
+          )
+          if (isNestedTableArray) {
+            return rows.map((tableObj, i) => {
+              const name =
+                (['name', 'title', 'tableName', 'table_name', 'section'] as const)
+                  .map(k => tableObj[k])
+                  .find((v): v is string => typeof v === 'string') ?? `Table ${i + 1}`
+              const tableRows =
+                (['rows', 'data', 'items', 'entries'] as const)
+                  .map(k => tableObj[k])
+                  .find((v): v is Record<string, unknown>[] => Array.isArray(v)) ?? []
+              return tableRows.length > 0 ? (
+                <div key={`${key}-${i}`} className="mb-4">
+                  <ExtractionTable fieldName={name} rows={tableRows} />
+                </div>
+              ) : null
+            })
+          }
+          return (
+            <div key={key} className="mb-4">
+              <ExtractionTable fieldName={key} rows={rows} />
+            </div>
+          )
+        })}
 
         {/* extracted_data */}
         {extractedData && (() => {

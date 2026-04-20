@@ -38,6 +38,10 @@ function formatCell(key: string, value: unknown): { display: string; numeric: nu
     return { display, numeric: value, isNegative: isNeg }
   }
 
+  if (typeof value === 'object') {
+    return { display: JSON.stringify(value), numeric: null, isNegative: false }
+  }
+
   return { display: String(value), numeric: null, isNegative: false }
 }
 
