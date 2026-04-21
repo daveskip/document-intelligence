@@ -61,6 +61,14 @@ public static class DocumentEndpoints
             .ProducesProblem(StatusCodes.Status403Forbidden)
             .ProducesProblem(StatusCodes.Status404NotFound);
 
+        group.MapPost("/{id:guid}/requeue", RequeueDocumentAsync)
+            .WithName("RequeueDocument")
+            .WithSummary("Requeue a failed document for re-processing.")
+            .Produces<DocumentDto>(StatusCodes.Status202Accepted)
+            .ProducesProblem(StatusCodes.Status400BadRequest)
+            .ProducesProblem(StatusCodes.Status403Forbidden)
+            .ProducesProblem(StatusCodes.Status404NotFound);
+
         return app;
     }
 
@@ -212,6 +220,37 @@ public static class DocumentEndpoints
         return Results.NoContent();
     }
 
+    private static async Task<IResult> RequeueDocumentAsync(
+        Guid id,
+        IDocumentRepository documentRepo,
+        IDocumentQueuePublisher queuePublisher,
+        ClaimsPrincipal user,
+        CancellationToken ct)
+    {
+        var document = await documentRepo.GetByIdAsync(id, ct);
+        if (document is null) return Results.NotFound();
+
+        var userId = user.FindFirstValue(ClaimTypes.NameIdentifier)
+            ?? user.FindFirstValue("sub")!;
+        if (document.UploadedByUserId != userId) return Results.Forbid();
+
+        if (document.Status != DocumentStatus.Failed)
+            return Results.BadRequest("Only failed documents can be requeued.");
+
+        await documentRepo.UpdateStatusAsync(id, DocumentStatus.Pending, null, ct);
+
+        await queuePublisher.PublishAsync(new DocumentProcessingMessage(
+            document.Id,
+            document.BlobPath,
+            document.FileName,
+            document.ContentType,
+            document.UploadedByUserId), ct);
+
+        document.Status = DocumentStatus.Pending;
+        document.ErrorMessage = null;
+        return Results.Accepted($"/api/v1/documents/{id}", MapToDto(document));
+    }
+
     private static DocumentDto MapToDto(Document d) => new(
         d.Id,
         d.FileName,
@@ -238,5 +277,6 @@ public static class DocumentEndpoints
         r.ExtractedJson,
         r.ConfidenceScore,
         r.ModelVersion,
-        r.ProcessedAt);
+        r.ProcessedAt,
+        r.ProcessingDurationMs);
 }

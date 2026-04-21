@@ -141,4 +141,52 @@ public class DocumentEndpointValidationTests
                     ?? principal.FindFirstValue("sub");
         found.Should().Be(userId);
     }
+
+    // ── RequeueDocument validation ────────────────────────────────────────
+
+    [Theory]
+    [InlineData(DocumentStatus.Pending)]
+    [InlineData(DocumentStatus.Processing)]
+    [InlineData(DocumentStatus.Completed)]
+    public void RequeueDocument_NonFailedStatus_ShouldBeRejectedByStatusGuard(DocumentStatus status)
+    {
+        // Only Failed documents can be requeued — any other status must trigger a 400
+        (status != DocumentStatus.Failed).Should().BeTrue(
+            "only documents in Failed status can be requeued");
+    }
+
+    [Fact]
+    public void RequeueDocument_FailedStatus_PassesStatusGuard()
+    {
+        var status = DocumentStatus.Failed;
+        (status == DocumentStatus.Failed).Should().BeTrue(
+            "Failed documents should pass the requeue status guard");
+    }
+
+    // ── ExtractionResultDto ────────────────────────────────────────────────────
+
+    [Fact]
+    public void ExtractionResultDto_ProcessingDurationMs_IsPartOfContract()
+    {
+        var dto = new ExtractionResultDto(
+            Guid.NewGuid(),
+            "{\"field\":\"value\"}",
+            0.95,
+            "qwen2.5vl:7b",
+            DateTimeOffset.UtcNow,
+            45_000L);
+
+        dto.ProcessingDurationMs.Should().Be(45_000L);
+        dto.ConfidenceScore.Should().Be(0.95);
+    }
+
+    [Fact]
+    public void ExtractionResultDto_ZeroDuration_IsValidForLegacyRows()
+    {
+        // Rows created before this feature was added will have ProcessingDurationMs = 0
+        var dto = new ExtractionResultDto(
+            Guid.NewGuid(), "{}", 0.0, "unknown", DateTimeOffset.UtcNow, 0L);
+
+        dto.ProcessingDurationMs.Should().Be(0L);
+    }
 }

@@ -231,6 +231,20 @@ Use the existing `useDocumentSignalR(documentId)` / `useDashboardSignalR()` hook
 
 `DocumentIntelligence.Contracts` has no ASP.NET or EF references. Keep it that way. Every type in Contracts is a `record`. Both the API and Functions reference this project — any breaking change to a record requires updating both.
 
+## Unit Testing Rules
+
+Always implement unit tests alongside every code change. Do not defer tests to a follow-up task.
+
+- **Test project per source project**: `tests/DocumentIntelligence.<Project>.Tests/`
+- **Framework**: xUnit + FluentAssertions + NSubstitute (already referenced in every test project)
+- **File naming**: match the file under test — `DocumentProcessingFunction.cs` → `DocumentProcessingFunctionTests.cs`
+- **SQLite in-memory** (`SqliteAppDbContext`) for any test that exercises EF Core — never use the real Postgres provider in tests
+- **Mock all I/O** (repositories, blob storage, HTTP clients, queues) with `NSubstitute.Substitute.For<T>()`
+- Private static helper methods (e.g. `ComputeConfidenceScore`) must be tested indirectly through the public surface (`RunAsync`) by asserting on the stored DB state or return value
+- Organise tests with `// ── Section name ──` region comments, matching the pattern used in the existing test files
+- Every new endpoint handler must have tests covering: happy path, ownership/auth guard (wrong user), not-found, and all business-rule rejections (status guard, validation errors)
+- Every new pure-logic method must have tests for: all-valid input, boundary values, null/empty input, and parse-failure fallback
+
 ## Adding a New Feature Checklist
 
 ### New API endpoint
@@ -240,6 +254,7 @@ Use the existing `useDocumentSignalR(documentId)` / `useDashboardSignalR()` hook
 4. Add interface + implementation to `Infrastructure` if new infrastructure is needed
 5. Register new services in `InfrastructureExtensions.cs`
 6. Call `MapXxxEndpoints()` from `ApiService/Program.cs`
+7. **Add unit tests** covering happy path, ownership guard, not-found, and all validation rejections
 
 ### New domain entity
 1. Add entity `class` to `Domain/Entities/`

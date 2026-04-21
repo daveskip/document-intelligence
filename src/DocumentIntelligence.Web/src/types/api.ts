@@ -40,6 +40,7 @@ export interface ExtractionResultDto {
   confidenceScore: number
   modelVersion: string
   processedAt: string
+  processingDurationMs: number
 }
 
 export interface DocumentDetailDto extends DocumentDto {
@@ -72,5 +73,6 @@ export interface DocumentStatusNotification {
     confidenceScore: number
     modelVersion: string
     processedAt: string
+    processingDurationMs: number
   }
 }

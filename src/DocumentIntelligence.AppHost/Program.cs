@@ -60,7 +60,7 @@ else
 {
     // Only register the model pull when isolation is off — the pull contacts
     // registry.ollama.ai, which is unreachable when DNS is blocked.
-    // Previously used "gemma4:e4b".
+    // Previously used gemma4:e4b or qwen2.5vl:7b.
     ollama.AddModel("qwen2.5vl:7b");
 }
 

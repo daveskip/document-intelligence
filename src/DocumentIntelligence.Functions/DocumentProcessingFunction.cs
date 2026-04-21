@@ -49,16 +49,20 @@ public class DocumentProcessingFunction(
         try
         {
             var blobContent = await blobStorageService.DownloadBytesAsync(message.BlobPath, cancellationToken);
+
+            var processingStartedAt = DateTimeOffset.UtcNow;
             var extractedJson = await extractionService.ExtractAsync(blobContent, message.ContentType, message.FileName, cancellationToken);
+            var durationMs = (long)(DateTimeOffset.UtcNow - processingStartedAt).TotalMilliseconds;
 
             var result = new ExtractionResult
             {
                 Id = Guid.NewGuid(),
                 DocumentId = message.DocumentId,
                 ExtractedJson = extractedJson,
-                ConfidenceScore = 0.85, // Gemma 4 does not return confidence directly
+                ConfidenceScore = ComputeConfidenceScore(extractedJson),
                 ModelVersion = extractionService.ModelName,
-                ProcessedAt = DateTimeOffset.UtcNow
+                ProcessedAt = DateTimeOffset.UtcNow,
+                ProcessingDurationMs = durationMs
             };
 
             db.ExtractionResults.Add(result);
@@ -66,12 +70,16 @@ public class DocumentProcessingFunction(
 
             await documentRepository.UpdateStatusAsync(message.DocumentId, DocumentStatus.Completed, null, cancellationToken);
 
+            logger.LogInformation(
+                "Document {DocumentId} processed in {DurationMs}ms with confidence {Confidence:P0}.",
+                message.DocumentId, durationMs, result.ConfidenceScore);
+
             await NotifyApiAsync(message.DocumentId, new DocumentStatusNotification(
                 message.DocumentId,
                 DocumentStatus.Completed,
                 "Completed",
                 null,
-                new ExtractionSummary(result.ConfidenceScore, result.ModelVersion, result.ProcessedAt)),
+                new ExtractionSummary(result.ConfidenceScore, result.ModelVersion, result.ProcessedAt, durationMs)),
                 cancellationToken);
 
             logger.LogInformation("Document {DocumentId} processed successfully.", message.DocumentId);
@@ -120,6 +128,51 @@ public class DocumentProcessingFunction(
         catch (Exception ex)
         {
             logger.LogWarning(ex, "Failed to notify API for document {DocumentId}. SignalR update skipped.", documentId);
+        }
+    }
+
+    /// <summary>
+    /// Derives a confidence score from the completeness of the extracted JSON.
+    /// Score = non-null top-level fields / total top-level fields.
+    /// Penalised by 30% if the response was truncated.
+    /// Metadata/internal keys are excluded from the calculation.
+    /// </summary>
+    private static double ComputeConfidenceScore(string extractedJson)
+    {
+        try
+        {
+            using var doc = JsonDocument.Parse(extractedJson);
+            var root = doc.RootElement;
+            if (root.ValueKind != JsonValueKind.Object) return 0.0;
+
+            // Keys that are structural/metadata — excluded from the field-completeness ratio.
+            var excluded = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+            {
+                "_metadata", "_reasoning", "_truncated"
+            };
+
+            bool isTruncated = root.TryGetProperty("_truncated", out var truncatedProp)
+                && truncatedProp.ValueKind == JsonValueKind.True;
+
+            int total = 0;
+            int nonNull = 0;
+
+            foreach (var property in root.EnumerateObject())
+            {
+                if (excluded.Contains(property.Name)) continue;
+                total++;
+                if (property.Value.ValueKind != JsonValueKind.Null)
+                    nonNull++;
+            }
+
+            if (total == 0) return 0.0;
+
+            var score = Math.Round((double)nonNull / total, 2);
+            return isTruncated ? Math.Round(score * 0.7, 2) : score;
+        }
+        catch
+        {
+            return 0.0;
         }
     }
 }

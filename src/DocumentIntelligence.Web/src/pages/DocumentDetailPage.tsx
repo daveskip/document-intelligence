@@ -1,7 +1,7 @@
 import { useParams, Link, useNavigate } from 'react-router-dom'
 import { useEffect, useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { ArrowLeft, Trash2, Loader2, AlertCircle, ChevronDown, ScanText } from 'lucide-react'
+import { ArrowLeft, Trash2, Loader2, AlertCircle, ChevronDown, ScanText, RefreshCw } from 'lucide-react'
 import api from '../lib/api'
 import { StatusBadge } from '../components/StatusBadge'
 import { ExtractionTable } from '../components/ExtractionTable'
@@ -139,6 +139,15 @@ function ExtractedFields({ json }: { json: string }) {
   }
 }
 
+function formatDuration(ms: number): string {
+  if (ms <= 0) return '—'
+  const totalSeconds = Math.round(ms / 1000)
+  if (totalSeconds < 60) return `${totalSeconds}s`
+  const minutes = Math.floor(totalSeconds / 60)
+  const seconds = totalSeconds % 60
+  return seconds > 0 ? `${minutes}m ${seconds}s` : `${minutes}m`
+}
+
 export default function DocumentDetailPage() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
@@ -151,6 +160,14 @@ export default function DocumentDetailPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['documents'] })
       navigate('/dashboard')
+    },
+  })
+
+  const requeueMutation = useMutation({
+    mutationFn: () => api.post(`/documents/${id}/requeue`),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['document', id] })
+      queryClient.invalidateQueries({ queryKey: ['documents'] })
     },
   })
 
@@ -209,10 +226,23 @@ export default function DocumentDetailPage() {
         </div>
       </div>
 
-      {data.statusLabel === 'Failed' && data.errorMessage && (
-        <div className="mb-6 rounded-md bg-red-50 border border-red-200 text-red-700 px-4 py-3 text-sm flex items-center gap-2">
-          <AlertCircle className="h-4 w-4 shrink-0" />
-          <span><strong>Processing error:</strong> {data.errorMessage}</span>
+      {data.statusLabel === 'Failed' && (
+        <div className="mb-6 rounded-md bg-red-50 border border-red-200 text-red-700 px-4 py-3 text-sm flex items-start justify-between gap-4">
+          <div className="flex items-center gap-2">
+            <AlertCircle className="h-4 w-4 shrink-0 mt-0.5" />
+            <span>
+              <strong>Processing error:</strong>{' '}
+              {data.errorMessage ?? 'An unknown error occurred.'}
+            </span>
+          </div>
+          <button
+            onClick={() => requeueMutation.mutate()}
+            disabled={requeueMutation.isPending}
+            className="flex items-center gap-1.5 text-sm text-red-700 border border-red-300 rounded-md px-3 py-1 hover:bg-red-100 disabled:opacity-40 shrink-0"
+          >
+            <RefreshCw className={`h-4 w-4 ${requeueMutation.isPending ? 'animate-spin' : ''}`} />
+            {requeueMutation.isPending ? 'Requeueing…' : 'Retry'}
+          </button>
         </div>
       )}
 
@@ -232,7 +262,8 @@ export default function DocumentDetailPage() {
             </h2>
             <div className="text-xs text-gray-400">
               Model: {data.extractionResult.modelVersion} ·{' '}
-              Confidence: {(data.extractionResult.confidenceScore * 100).toFixed(0)}%
+              Confidence: {(data.extractionResult.confidenceScore * 100).toFixed(0)}%{' '}·{' '}
+              Processing: {formatDuration(data.extractionResult.processingDurationMs)}
             </div>
           </div>
           <ExtractedFields json={data.extractionResult.extractedJson} />

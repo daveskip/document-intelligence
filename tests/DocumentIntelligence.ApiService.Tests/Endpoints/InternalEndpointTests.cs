@@ -96,7 +96,7 @@ public class InternalEndpointKeyTests
             DocumentStatus.Completed,
             "Completed",
             null,
-            new ExtractionSummary(0.85, "qwen2.5vl:7b", DateTimeOffset.UtcNow));
+            new ExtractionSummary(0.85, "qwen2.5vl:7b", DateTimeOffset.UtcNow, 0));
 
         notification.Status.Should().Be(DocumentStatus.Completed);
         notification.StatusLabel.Should().Be("Completed");
@@ -117,5 +117,36 @@ public class InternalEndpointKeyTests
         notification.Status.Should().Be(DocumentStatus.Failed);
         notification.ErrorMessage.Should().NotBeNullOrEmpty();
         notification.ExtractionSummary.Should().BeNull();
+    }
+
+    // ── ExtractionSummary.ProcessingDurationMs ──────────────────────────────
+
+    [Fact]
+    public void ExtractionSummary_ProcessingDurationMs_IsStoredOnRecord()
+    {
+        var summary = new ExtractionSummary(0.90, "qwen2.5vl:7b", DateTimeOffset.UtcNow, 120_000L);
+
+        summary.ProcessingDurationMs.Should().Be(120_000L);
+        summary.ConfidenceScore.Should().Be(0.90);
+        summary.ModelVersion.Should().Be("qwen2.5vl:7b");
+    }
+
+    [Fact]
+    public void ExtractionSummary_ZeroDurationMs_IsValidForInstantProcessing()
+    {
+        var summary = new ExtractionSummary(1.0, "test-model", DateTimeOffset.UtcNow, 0L);
+
+        summary.ProcessingDurationMs.Should().Be(0L);
+    }
+
+    [Fact]
+    public void DocumentStatusNotification_CompletedSummary_CarriesDurationMs()
+    {
+        var durationMs = 95_432L;
+        var summary = new ExtractionSummary(0.88, "qwen2.5vl:7b", DateTimeOffset.UtcNow, durationMs);
+        var notification = new DocumentStatusNotification(
+            Guid.NewGuid(), DocumentStatus.Completed, "Completed", null, summary);
+
+        notification.ExtractionSummary!.ProcessingDurationMs.Should().Be(durationMs);
     }
 }

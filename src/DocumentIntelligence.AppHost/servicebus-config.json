@@ -10,7 +10,7 @@
               "DeadLetteringOnMessageExpiration": true,
               "DefaultMessageTimeToLive": "PT1H",
               "LockDuration": "PT5M",
-              "MaxDeliveryCount": 3
+              "MaxDeliveryCount": 1
             }
           }
         ],

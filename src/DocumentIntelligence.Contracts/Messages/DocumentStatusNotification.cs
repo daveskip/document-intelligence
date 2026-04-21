@@ -9,4 +9,4 @@ public record DocumentStatusNotification(
     string? ErrorMessage,
     ExtractionSummary? ExtractionSummary);
 
-public record ExtractionSummary(double ConfidenceScore, string ModelVersion, DateTimeOffset ProcessedAt);
+public record ExtractionSummary(double ConfidenceScore, string ModelVersion, DateTimeOffset ProcessedAt, long ProcessingDurationMs);

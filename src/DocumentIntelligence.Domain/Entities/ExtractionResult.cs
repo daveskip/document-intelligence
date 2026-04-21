@@ -8,6 +8,7 @@ public class ExtractionResult
     public double ConfidenceScore { get; set; }
     public string ModelVersion { get; set; } = string.Empty;
     public DateTimeOffset ProcessedAt { get; set; } = DateTimeOffset.UtcNow;
+    public long ProcessingDurationMs { get; set; }
     public string? ErrorMessage { get; set; }
 
     public Document Document { get; set; } = null!;

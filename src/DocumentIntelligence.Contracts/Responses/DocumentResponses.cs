@@ -28,7 +28,8 @@ public record ExtractionResultDto(
     string ExtractedJson,
     double ConfidenceScore,
     string ModelVersion,
-    DateTimeOffset ProcessedAt);
+    DateTimeOffset ProcessedAt,
+    long ProcessingDurationMs);
 
 public record PagedResult<T>(IReadOnlyList<T> Items, int TotalCount, int Page, int PageSize)
 {
