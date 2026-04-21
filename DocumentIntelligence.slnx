@@ -8,4 +8,12 @@
     <Project Path="src/DocumentIntelligence.Infrastructure/DocumentIntelligence.Infrastructure.csproj" />
     <Project Path="src/DocumentIntelligence.ServiceDefaults/DocumentIntelligence.ServiceDefaults.csproj" />
   </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/DocumentIntelligence.ApiService.Tests/DocumentIntelligence.ApiService.Tests.csproj" />
+    <Project Path="tests/DocumentIntelligence.Contracts.Tests/DocumentIntelligence.Contracts.Tests.csproj" />
+    <Project Path="tests/DocumentIntelligence.Domain.Tests/DocumentIntelligence.Domain.Tests.csproj" />
+    <Project Path="tests/DocumentIntelligence.Functions.Tests/DocumentIntelligence.Functions.Tests.csproj" />
+    <Project Path="tests/DocumentIntelligence.Infrastructure.Tests/DocumentIntelligence.Infrastructure.Tests.csproj" />
+    <Project Path="tests/DocumentIntelligence.ServiceDefaults.Tests/DocumentIntelligence.ServiceDefaults.Tests.csproj" />
+  </Folder>
 </Solution>
