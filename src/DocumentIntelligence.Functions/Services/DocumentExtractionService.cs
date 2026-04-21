@@ -110,13 +110,6 @@ public class DocumentExtractionService(
             Analyze the text extracted from "{fileName}" and extract ALL labeled fields you can identify.
             Only extract explicit key-value pairs — named form fields, box labels, or data labels paired with a value.
             Do NOT extract sentences, paragraphs, instructions, disclaimers, or general body text.
-
-            CRITICAL FIELDS — these must be extracted with the highest priority and accuracy:
-            - Employee name (any variant: "Employee Name", "Name of Employee", "Worker Name", etc.)
-            - Social Security Number / SSN (any variant: "SSN", "Social Security No.", "EIN", "TIN", "Taxpayer Identification Number", etc.)
-            These two fields are used to match this document to existing employee records. If either is
-            present but ambiguous or partially legible, make your best attempt and flag it in "extractionNotes".
-            Never omit these fields — if truly absent from the document, set their value to null.
             Return ONLY a valid JSON object where:
             - Keys are the field names/labels found in the document (use camelCase, no spaces)
             - Values are the field values exactly as they appear in the document — never truncated or omitted
@@ -131,10 +124,6 @@ public class DocumentExtractionService(
 
             Include a "_reasoning" key with a brief explanation of how you identified the fields,
             what document structure you observed, and any decisions you made during extraction.
-
-            Include an "_omissions" key listing any fields or sections you chose NOT to extract,
-            with a brief reason for each omission (e.g. "instructions_text: excluded — body text, not a labeled field").
-            If no fields were omitted, set "_omissions" to an empty object.
 
             Document text:
             {textContent}
@@ -145,13 +134,6 @@ public class DocumentExtractionService(
             Analyze the document image(s) from file "{fileName}" and extract ALL labeled fields you can identify.
             Only extract explicit key-value pairs — named form fields, box labels, or data labels paired with a value.
             Do NOT extract sentences, paragraphs, instructions, disclaimers, or general body text.
-
-            CRITICAL FIELDS — these must be extracted with the highest priority and accuracy:
-            - Employee name (any variant: "Employee Name", "Name of Employee", "Worker Name", etc.)
-            - Social Security Number / SSN (any variant: "SSN", "Social Security No.", "EIN", "TIN", "Taxpayer Identification Number", etc.)
-            These two fields are used to match this document to existing employee records. If either is
-            present but ambiguous or partially legible, make your best attempt and flag it in "extractionNotes".
-            Never omit these fields — if truly absent from the document, set their value to null.
             Return ONLY a valid JSON object where:
             - Keys are the field names/labels found in the document (use camelCase, no spaces)
             - Values are the field values exactly as they appear in the document — never truncated or omitted
@@ -166,10 +148,6 @@ public class DocumentExtractionService(
 
             Include a "_reasoning" key with a brief explanation of how you identified the fields,
             what document structure you observed, and any decisions you made during extraction.
-
-            Include an "_omissions" key listing any fields or sections you chose NOT to extract,
-            with a brief reason for each omission (e.g. "instructions_text: excluded — body text, not a labeled field").
-            If no fields were omitted, set "_omissions" to an empty object.
 
             Return only the JSON object, no explanation.
             """;
