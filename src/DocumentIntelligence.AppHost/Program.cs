@@ -75,15 +75,27 @@ var apiService = builder.AddProject<Projects.DocumentIntelligence_ApiService>("a
     .WaitFor(blobs)
     .WaitFor(serviceBus);
 
-// ── Azure Functions Processor (runs locally for easier debugging) ─────────
-builder.AddAzureFunctionsProject<Projects.DocumentIntelligence_Functions>("functions")
-    .WithHostStorage(storage)
+// ── Azure Functions Processor (containerized for VS debugger attach) ──────
+builder.AddDockerfile(
+        "functions",
+        "../../",
+        "src/DocumentIntelligence.Functions/Dockerfile")
+    .WithContainerName("docint-functions")
+    .WithEnvironment("FUNCTIONS_WORKER_RUNTIME", "dotnet-isolated")
     .WithEnvironment("Internal__SharedKey", internalSharedKey)
-    .WithReference(db)
-    .WithReference(blobs)
-    .WithReference(serviceBus)
-    .WithReference(ollama)
-    .WithReference(apiService)
+    .WithEnvironment("ConnectionStrings__documentintelligence", db)
+    .WithEnvironment("ConnectionStrings__document-blobs", blobs)
+    .WithEnvironment("servicebus", serviceBus)
+    .WithEnvironment("services__ollama__http__0", ollama.GetEndpoint("http"))
+    .WithEnvironment("services__apiservice__https__0", apiService.GetEndpoint("https"))
+    .WithEnvironment("services__apiservice__http__0", apiService.GetEndpoint("http"))
+    .WithEnvironment(context =>
+    {
+        if (context.EnvironmentVariables.TryGetValue("ConnectionStrings__document-blobs", out var blobConnectionString))
+        {
+            context.EnvironmentVariables["AzureWebJobsStorage"] = blobConnectionString;
+        }
+    })
     .WaitFor(apiService)
     .WaitFor(serviceBus);
 
