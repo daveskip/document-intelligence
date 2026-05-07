@@ -45,8 +45,8 @@ var ollamaIsolated = builder.Configuration.GetValue("OllamaNetworkIsolation", de
 
 var ollama = builder.AddOllama("ollama", port: 11434)
     .WithImageTag("latest")
-    .WithDataVolume("docint-ollama-data")
-    .WithGPUSupport();
+    .WithDataVolume("docint-ollama-data");
+    //.WithGPUSupport();
 
 if (ollamaIsolated)
 {

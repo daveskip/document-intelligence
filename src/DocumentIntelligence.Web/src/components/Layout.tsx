@@ -1,9 +1,9 @@
 import { Outlet, NavLink, useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
-import { BrainCircuit, LayoutDashboard, Upload, User, LogOut } from 'lucide-react'
+import { BrainCircuit, LayoutDashboard, Upload, User, LogOut, ShieldCheck } from 'lucide-react'
 
 export default function Layout() {
-  const { user, logout } = useAuth()
+  const { user, logout, isAdmin } = useAuth()
   const navigate = useNavigate()
 
   function handleLogout() {
@@ -38,6 +38,17 @@ export default function Layout() {
               <Upload className="h-4 w-4" />
               Upload
             </NavLink>
+            {isAdmin && (
+              <NavLink
+                to="/admin/users"
+                className={({ isActive }) =>
+                  `flex items-center gap-1.5 text-sm font-medium ${isActive ? 'text-blue-600' : 'text-gray-600 hover:text-gray-900'}`
+                }
+              >
+                <ShieldCheck className="h-4 w-4" />
+                Admin
+              </NavLink>
+            )}
           </nav>
         </div>
         <div className="flex items-center gap-4">

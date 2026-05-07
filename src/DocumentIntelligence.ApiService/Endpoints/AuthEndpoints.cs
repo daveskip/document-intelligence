@@ -95,7 +95,9 @@ public static class AuthEndpoints
                 result.Errors.ToDictionary(e => e.Code, e => new[] { e.Description }));
         }
 
-        var (response, hashedRefreshToken) = GenerateAuthResponse(user, config);
+        await userManager.AddToRoleAsync(user, "User");
+
+        var (response, hashedRefreshToken) = await GenerateAuthResponseAsync(user, config, userManager);
         user.RefreshToken = hashedRefreshToken;
         user.RefreshTokenExpiry = DateTimeOffset.UtcNow.AddDays(30);
         await userManager.UpdateAsync(user);
@@ -121,7 +123,7 @@ public static class AuthEndpoints
             return Results.Problem("Invalid email or password.", statusCode: 401);
         }
 
-        var (response, hashedRefreshToken) = GenerateAuthResponse(user, config);
+        var (response, hashedRefreshToken) = await GenerateAuthResponseAsync(user, config, userManager);
         user.RefreshToken = hashedRefreshToken;
         user.RefreshTokenExpiry = DateTimeOffset.UtcNow.AddDays(30);
         await userManager.UpdateAsync(user);
@@ -145,7 +147,7 @@ public static class AuthEndpoints
             return Results.Problem("Invalid or expired refresh token.", statusCode: 401);
         }
 
-        var (response, hashedRefreshToken) = GenerateAuthResponse(user, config);
+        var (response, hashedRefreshToken) = await GenerateAuthResponseAsync(user, config, userManager);
         user.RefreshToken = hashedRefreshToken;
         user.RefreshTokenExpiry = DateTimeOffset.UtcNow.AddDays(30);
         await userManager.UpdateAsync(user);
@@ -153,7 +155,8 @@ public static class AuthEndpoints
         return Results.Ok(response);
     }
 
-    private static (AuthResponse Response, string HashedRefreshToken) GenerateAuthResponse(ApplicationUser user, IConfiguration config)
+    private static async Task<(AuthResponse Response, string HashedRefreshToken)> GenerateAuthResponseAsync(
+        ApplicationUser user, IConfiguration config, UserManager<ApplicationUser> userManager)
     {
         var jwtKey = config["Jwt:Key"] ?? throw new InvalidOperationException("Jwt:Key is not configured.");
         var jwtIssuer = config["Jwt:Issuer"] ?? "DocumentIntelligence";
@@ -163,13 +166,18 @@ public static class AuthEndpoints
         var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
         var expiry = DateTimeOffset.UtcNow.AddHours(1);
 
-        var claims = new[]
+        var roles = await userManager.GetRolesAsync(user);
+
+        var claims = new List<Claim>
         {
-            new Claim(JwtRegisteredClaimNames.Sub, user.Id),
-            new Claim(JwtRegisteredClaimNames.Email, user.Email!),
-            new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
-            new Claim("displayName", user.DisplayName)
+            new(JwtRegisteredClaimNames.Sub, user.Id),
+            new(JwtRegisteredClaimNames.Email, user.Email!),
+            new(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
+            new("displayName", user.DisplayName)
         };
+
+        foreach (var role in roles)
+            claims.Add(new Claim(ClaimTypes.Role, role));
 
         var token = new JwtSecurityToken(
             issuer: jwtIssuer,
@@ -186,7 +194,7 @@ public static class AuthEndpoints
             accessToken,
             rawRefreshToken,
             expiry,
-            new UserDto(user.Id, user.Email!, user.DisplayName)),
+            new UserDto(user.Id, user.Email!, user.DisplayName, roles.ToList())),
             hashedRefreshToken);
     }
 }

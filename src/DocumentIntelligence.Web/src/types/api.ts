@@ -61,7 +61,15 @@ export interface AuthResponse {
   accessToken: string
   refreshToken: string
   accessTokenExpiry: string
-  user: { id: string; email: string; displayName: string }
+  user: { id: string; email: string; displayName: string; roles: string[] }
+}
+
+export interface AdminUserDto {
+  id: string
+  email: string
+  displayName: string
+  createdAt: string
+  roles: string[]
 }
 
 export interface DocumentStatusNotification {

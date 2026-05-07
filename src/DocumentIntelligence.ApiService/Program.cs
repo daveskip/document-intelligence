@@ -11,6 +11,8 @@ builder.AddInfrastructure();
 
 // ── Auth, CORS, API features (defined in ServiceDefaults) ──────────────────
 builder.AddJwtAuthentication();
+builder.Services.AddAuthorizationBuilder()
+    .AddPolicy("Admin", p => p.RequireRole("Admin"));
 builder.Services.AddSignalR();
 builder.AddFrontendCors();
 builder.AddApiFeatures();
@@ -58,6 +60,8 @@ if (app.Configuration.GetValue("ApplyMigrationsOnStartup", defaultValue: true))
     await app.Services.ApplyMigrationsAsync();
 }
 
+await app.Services.SeedRolesAndAdminAsync(app.Configuration);
+
 // ── Middleware pipeline ────────────────────────────────────────────────────
 if (app.Environment.IsDevelopment())
 {
@@ -74,6 +78,7 @@ app.UseAuthorization();
 app.MapDefaultEndpoints();
 app.MapAuthEndpoints();
 app.MapDocumentEndpoints();
+app.MapAdminEndpoints();
 app.MapInternalEndpoints();
 app.MapHub<DocumentStatusHub>("/hubs/documents");
 

@@ -10,6 +10,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
 
 namespace DocumentIntelligence.Infrastructure;
 
@@ -38,6 +39,7 @@ public static class InfrastructureExtensions
             options.Password.RequireUppercase = false;
             options.User.RequireUniqueEmail = true;
         })
+        .AddRoles<IdentityRole>()
         .AddEntityFrameworkStores<AppDbContext>()
         .AddDefaultTokenProviders();
 
@@ -82,6 +84,60 @@ public static class InfrastructureExtensions
         using var scope = services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
         await db.Database.MigrateAsync();
+    }
+
+    /// <summary>
+    /// Ensures the <c>Admin</c> and <c>User</c> roles exist, and optionally seeds a first
+    /// admin account from <c>Admin:Email</c> (appsettings) and <c>Admin:Password</c> (user-secrets).
+    /// Safe to call on every startup — all operations are idempotent.
+    /// </summary>
+    public static async Task SeedRolesAndAdminAsync(this IServiceProvider services, IConfiguration config)
+    {
+        using var scope = services.CreateScope();
+        var roleManager = scope.ServiceProvider.GetRequiredService<RoleManager<IdentityRole>>();
+        var userManager = scope.ServiceProvider.GetRequiredService<UserManager<ApplicationUser>>();
+        var logger = scope.ServiceProvider.GetRequiredService<ILogger<AppDbContext>>();
+
+        foreach (var roleName in new[] { "Admin", "User" })
+        {
+            if (!await roleManager.RoleExistsAsync(roleName))
+            {
+                await roleManager.CreateAsync(new IdentityRole(roleName));
+                logger.LogInformation("Created role: {Role}", roleName);
+            }
+        }
+
+        var adminEmail = config["Admin:Email"];
+        var adminPassword = config["Admin:Password"];
+        if (string.IsNullOrWhiteSpace(adminEmail) || string.IsNullOrWhiteSpace(adminPassword))
+            return;
+
+        var existing = await userManager.FindByEmailAsync(adminEmail);
+        if (existing is not null)
+        {
+            // Ensure the existing user has the Admin role.
+            if (!await userManager.IsInRoleAsync(existing, "Admin"))
+                await userManager.AddToRoleAsync(existing, "Admin");
+            return;
+        }
+
+        var adminUser = new ApplicationUser
+        {
+            UserName = adminEmail,
+            Email = adminEmail,
+            DisplayName = "Admin",
+        };
+
+        var result = await userManager.CreateAsync(adminUser, adminPassword);
+        if (!result.Succeeded)
+        {
+            logger.LogError("Failed to seed admin user: {Errors}",
+                string.Join(", ", result.Errors.Select(e => e.Description)));
+            return;
+        }
+
+        await userManager.AddToRoleAsync(adminUser, "Admin");
+        logger.LogInformation("Seeded admin user: {Email}", adminEmail);
     }
 
     private static IServiceCollection AddDataAccessServices(this IServiceCollection services)

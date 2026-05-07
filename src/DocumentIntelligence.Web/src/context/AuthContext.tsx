@@ -5,11 +5,13 @@ interface AuthUser {
   id: string
   email: string
   displayName: string
+  roles: string[]
 }
 
 interface AuthContextValue {
   user: AuthUser | null
   isAuthenticated: boolean
+  isAdmin: boolean
   login: (response: AuthResponse) => void
   logout: () => void
 }
@@ -43,7 +45,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [])
 
   return (
-    <AuthContext.Provider value={{ user, isAuthenticated: !!user, login, logout }}>
+    <AuthContext.Provider value={{ user, isAuthenticated: !!user, isAdmin: user?.roles.includes('Admin') ?? false, login, logout }}>
       {children}
     </AuthContext.Provider>
   )
