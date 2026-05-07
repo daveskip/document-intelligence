@@ -7,6 +7,7 @@
     <OutputType>Exe</OutputType>
     <AzureFunctionsVersion>v4</AzureFunctionsVersion>
     <UserSecretsId>docint-functions</UserSecretsId>
+    <OutDir>bin\output\</OutDir>
   </PropertyGroup>
 
   <ItemGroup>
