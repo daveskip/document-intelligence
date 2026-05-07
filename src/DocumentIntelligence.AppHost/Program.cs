@@ -75,25 +75,42 @@ var apiService = builder.AddProject<Projects.DocumentIntelligence_ApiService>("a
     .WaitFor(blobs)
     .WaitFor(serviceBus);
 
-// ── Azure Functions Processor (containerized for VS debugger attach) ──────
-builder.AddDockerfile(
+// ── Azure Functions Processor (runs locally for easier debugging) ─────────
+builder.AddExecutable(
         "functions",
-        "../../",
-        "src/DocumentIntelligence.Functions/Dockerfile")
-    .WithContainerName("docint-functions")
+        "func",
+        "../DocumentIntelligence.Functions",
+        "host",
+        "start",
+        "--port",
+        "7071",
+        "--dotnet-isolated-debug",
+        "--script-root",
+        "bin/output",
+        "--no-build")
+#pragma warning disable ASPIREEXTENSION001
+    .WithDebugSupport(mode => new
+    {
+        @type = "azure-functions",
+        mode,
+        project_path = "../DocumentIntelligence.Functions/DocumentIntelligence.Functions.csproj"
+    }, "azure-functions")
+#pragma warning restore ASPIREEXTENSION001
+    .WithHttpEndpoint(port: 7071, targetPort: 7071, isProxied: false)
     .WithEnvironment("FUNCTIONS_WORKER_RUNTIME", "dotnet-isolated")
+    .WithEnvironment("AzureWebJobsStorage", "UseDevelopmentStorage=true")
     .WithEnvironment("Internal__SharedKey", internalSharedKey)
-    .WithEnvironment("ConnectionStrings__documentintelligence", db)
-    .WithEnvironment("ConnectionStrings__document-blobs", blobs)
-    .WithEnvironment("servicebus", serviceBus)
-    .WithEnvironment("services__ollama__http__0", ollama.GetEndpoint("http"))
-    .WithEnvironment("services__apiservice__https__0", apiService.GetEndpoint("https"))
-    .WithEnvironment("services__apiservice__http__0", apiService.GetEndpoint("http"))
+    .WithReference(db)
+    .WithReference(blobs)
+    .WithReference(serviceBus)
+    .WithReference(ollama)
+    .WithReference(apiService)
     .WithEnvironment(context =>
     {
-        if (context.EnvironmentVariables.TryGetValue("ConnectionStrings__document-blobs", out var blobConnectionString))
+        // ServiceBusTrigger with Connection = "servicebus" expects this exact key.
+        if (context.EnvironmentVariables.TryGetValue("ConnectionStrings__servicebus", out var serviceBusConnection))
         {
-            context.EnvironmentVariables["AzureWebJobsStorage"] = blobConnectionString;
+            context.EnvironmentVariables["servicebus"] = serviceBusConnection;
         }
     })
     .WaitFor(apiService)
